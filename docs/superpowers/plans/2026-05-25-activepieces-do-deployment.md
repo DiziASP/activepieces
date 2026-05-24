@@ -288,6 +288,11 @@ jobs:
     needs: build-and-push
     runs-on: self-hosted
     steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@v4
+        with:
+          ref: production
+
       - name: Lowercase repository owner
         run: |
           echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
