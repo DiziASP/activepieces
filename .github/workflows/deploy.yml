@@ -67,18 +67,26 @@ jobs:
         run: |
           echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
+      - name: Sync deployment files
+        run: |
+          mkdir -p ~/activepieces
+          cp deploy/docker-compose.prod.yml ~/activepieces/
+          cp deploy/Caddyfile ~/activepieces/
+
       - name: Pull latest images
         run: |
           export TAG=${{ github.event.inputs.tag }}
           export GITHUB_REPOSITORY_OWNER=${{ env.REPO_OWNER }}
-          docker compose -f deploy/docker-compose.prod.yml pull
+          cd ~/activepieces
+          docker compose -f docker-compose.prod.yml pull
 
       - name: Deploy containers
         run: |
           export TAG=${{ github.event.inputs.tag }}
           export GITHUB_REPOSITORY_OWNER=${{ env.REPO_OWNER }}
           export AP_DOMAIN=${{ secrets.AP_DOMAIN }}
-          docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
+          cd ~/activepieces
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
       - name: Health check
         run: |
