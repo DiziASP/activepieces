@@ -12,7 +12,7 @@ services:
     environment:
       - AP_CONTAINER_TYPE=APP
     volumes:
-      - ./cache:/usr/src/app/cache
+      - activepieces_cache:/usr/src/app/cache
     networks:
       - activepieces
 
@@ -43,7 +43,7 @@ services:
     deploy:
       replicas: 2
     volumes:
-      - ./cache:/usr/src/app/cache
+      - activepieces_cache:/usr/src/app/cache
     networks:
       - activepieces
 
@@ -75,6 +75,7 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  activepieces_cache:
 
 networks:
   activepieces:

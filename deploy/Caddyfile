@@ -1,3 +1,7 @@
+{
+    # Global options (optional, but keep the braces for a proper Caddyfile)
+}
+
 {$AP_DOMAIN} {
     reverse_proxy app:80
 }
