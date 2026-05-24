@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deploy Activepieces on a hardened DigitalOcean VM accessible only via Tailscale with a manual GitHub Actions deployment flow.
+**Goal:** Deploy Activepieces on a hardened DigitalOcean VM. Web traffic (80/443) is public, but management (SSH) is private via Tailscale.
 
-**Architecture:** Use a GitHub-hosted runner to build Docker images and push them to GHCR. A self-hosted runner on the VM pulls the images and updates the containers. The VM is secured by Tailscale and UFW.
+**Architecture:** Use a GitHub-hosted runner to build Docker images and push them to GHCR. A self-hosted runner on the VM pulls the images and updates the containers. **Caddy** handles automatic SSL and reverse proxying.
 
-**Tech Stack:** Docker, Docker Compose, Tailscale, GitHub Actions, DigitalOcean, Ubuntu.
+**Tech Stack:** Docker, Docker Compose, Caddy, Tailscale, GitHub Actions, DigitalOcean, Ubuntu.
 
 ---
 
@@ -71,10 +71,17 @@ curl -fsSL https://tailscale.com/install.sh | sh
 # 5. Configure Firewall (UFW)
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow in on tailscale0
-# Allow SSH over Tailscale (Tailscale IP)
+
+# Public Web Access (for Activepieces & Webhooks)
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# Private Management Access (Tailscale ONLY)
+# This allows SSH only if you are connected to your Tailscale network
 sudo ufw allow in on tailscale0 to any port 22
+
 echo "y" | sudo ufw enable
+
 
 # 6. Enable Unattended Upgrades
 sudo dpkg-reconfigure -plow unattended-upgrades
@@ -110,8 +117,8 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-diziasp}/activepieces-app:${TAG:-latest}
     container_name: activepieces-app
     restart: unless-stopped
-    ports:
-      - '127.0.0.1:8080:80'
+    expose:
+      - '80'
     depends_on:
       - postgres
       - redis
@@ -120,6 +127,22 @@ services:
       - AP_CONTAINER_TYPE=APP
     volumes:
       - ./cache:/usr/src/app/cache
+    networks:
+      - activepieces
+
+  proxy:
+    image: caddy:2.7
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - AP_DOMAIN=${AP_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - activepieces
 
@@ -164,6 +187,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   activepieces:
@@ -175,7 +200,26 @@ Run: `git add deploy/docker-compose.prod.yml && git commit -m "feat: add product
 
 ---
 
-### Task 4: GitHub Actions Deployment Workflow
+### Task 4: Caddy Configuration
+
+**Files:**
+- Create: `deploy/Caddyfile`
+
+- [ ] **Step 1: Write the Caddyfile**
+
+```caddy
+{$AP_DOMAIN} {
+    reverse_proxy app:80
+}
+```
+
+- [ ] **Step 2: Commit**
+
+Run: `git add deploy/Caddyfile && git commit -m "feat: add Caddyfile for SSL"`
+
+---
+
+### Task 5: GitHub Actions Deployment Workflow
 
 **Files:**
 - Create: `.github/workflows/deploy.yml`
@@ -258,12 +302,13 @@ jobs:
         run: |
           export TAG=${{ github.event.inputs.tag }}
           export GITHUB_REPOSITORY_OWNER=${{ env.REPO_OWNER }}
+          export AP_DOMAIN=${{ secrets.AP_DOMAIN }}
           docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
 
       - name: Health check
         run: |
           sleep 30
-          curl -f http://localhost:8080/api/v1/health || exit 1
+          curl -f http://localhost:80/api/v1/health || exit 1
 ```
 
 - [ ] **Step 2: Commit**
@@ -272,7 +317,7 @@ Run: `git add .github/workflows/deploy.yml && git commit -m "feat: add deploymen
 
 ---
 
-### Task 5: Self-Hosted Runner Documentation
+### Task 6: Self-Hosted Runner Documentation
 
 **Files:**
 - Create: `deploy/RUNNER_SETUP.md`

@@ -7,13 +7,16 @@ The goal is to deploy Activepieces on a DigitalOcean VM with a "Big Red Button" 
 
 ### 2.1 Infrastructure
 - **Provider:** DigitalOcean Droplet (Ubuntu).
-- **Network:** Private overlay network via **Tailscale**.
-- **Firewall (UFW):** `default deny incoming`. Only `tailscale0` interface is allowed. The VM is invisible to the public internet.
-- **Access:** SSH and Activepieces Web UI are only accessible when connected to the Tailscale network.
+- **Network:** 
+  - **Public:** Ports 80 and 443 are open for Activepieces web traffic and webhooks.
+  - **Private:** Port 22 (SSH) is accessible **only** via **Tailscale**.
+- **Firewall (UFW):** `default deny incoming`. Explicitly allow 80/tcp, 443/tcp, and 22/tcp on `tailscale0`.
+- **SSL:** Automatic SSL certificate management via **Caddy**.
 
 ### 2.2 Security Hardening
-- **No Inbound Ports:** No public ports (80, 443, 22) are open to the internet.
+- **Restricted Ports:** Only ports 80 and 443 are open to the public. SSH (22) is restricted to Tailscale.
 - **Isolated Services:** Postgres and Redis run in Docker, bound only to the internal Docker network.
+- **Reverse Proxy:** **Caddy** acts as a secure front-end, handling SSL termination and proxying to the app container.
 - **Least Privilege:** Deployment actions are handled by a dedicated GitHub Runner user with restricted Docker access.
 - **OS Maintenance:** `unattended-upgrades` enabled for security patches.
 

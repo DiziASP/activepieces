@@ -25,9 +25,15 @@ curl -fsSL https://tailscale.com/install.sh | sh
 # 5. Configure Firewall (UFW)
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow in on tailscale0
-# Allow SSH over Tailscale (Tailscale IP)
+
+# Public Web Access (for Activepieces & Webhooks)
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# Private Management Access (Tailscale ONLY)
+# This allows SSH only if you are connected to your Tailscale network
 sudo ufw allow in on tailscale0 to any port 22
+
 echo "y" | sudo ufw enable
 
 # 6. Enable Unattended Upgrades
