@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-DiziASP}/activepieces-app:${TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-diziasp}/activepieces-app:${TAG:-latest}
     container_name: activepieces-app
     restart: unless-stopped
     ports:
@@ -17,7 +17,7 @@ services:
       - activepieces
 
   worker:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-DiziASP}/activepieces-worker:${TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-diziasp}/activepieces-worker:${TAG:-latest}
     restart: unless-stopped
     depends_on:
       - app

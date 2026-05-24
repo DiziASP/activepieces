@@ -107,7 +107,7 @@ Run: `git add deploy/setup-vm.sh && git commit -m "feat: add VM setup script"`
 ```yaml
 services:
   app:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/activepieces-app:${TAG}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-diziasp}/activepieces-app:${TAG:-latest}
     container_name: activepieces-app
     restart: unless-stopped
     ports:
@@ -124,7 +124,7 @@ services:
       - activepieces
 
   worker:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/activepieces-worker:${TAG}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-diziasp}/activepieces-worker:${TAG:-latest}
     restart: unless-stopped
     depends_on:
       - app
@@ -202,6 +202,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag }}
 
+      - name: Lowercase repository owner
+        run: |
+          echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -219,8 +223,8 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/activepieces-app:${{ github.event.inputs.tag }}
-            ghcr.io/${{ github.repository_owner }}/activepieces-app:latest
+            ghcr.io/${{ env.REPO_OWNER }}/activepieces-app:${{ github.event.inputs.tag }}
+            ghcr.io/${{ env.REPO_OWNER }}/activepieces-app:latest
           build-args: |
             AP_CONTAINER_TYPE=APP
 
@@ -231,8 +235,8 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/activepieces-worker:${{ github.event.inputs.tag }}
-            ghcr.io/${{ github.repository_owner }}/activepieces-worker:latest
+            ghcr.io/${{ env.REPO_OWNER }}/activepieces-worker:${{ github.event.inputs.tag }}
+            ghcr.io/${{ env.REPO_OWNER }}/activepieces-worker:latest
           build-args: |
             AP_CONTAINER_TYPE=WORKER
 
@@ -240,16 +244,20 @@ jobs:
     needs: build-and-push
     runs-on: self-hosted
     steps:
+      - name: Lowercase repository owner
+        run: |
+          echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Pull latest images
         run: |
           export TAG=${{ github.event.inputs.tag }}
-          export GITHUB_REPOSITORY_OWNER=${{ github.repository_owner }}
+          export GITHUB_REPOSITORY_OWNER=${{ env.REPO_OWNER }}
           docker compose -f deploy/docker-compose.prod.yml pull
 
       - name: Deploy containers
         run: |
           export TAG=${{ github.event.inputs.tag }}
-          export GITHUB_REPOSITORY_OWNER=${{ github.repository_owner }}
+          export GITHUB_REPOSITORY_OWNER=${{ env.REPO_OWNER }}
           docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
 
       - name: Health check
